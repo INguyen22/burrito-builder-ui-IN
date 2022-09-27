@@ -1,5 +1,55 @@
-describe('empty spec', () => {
-  it('passes', () => {
-    cy.visit('https://example.cypress.io')
+describe('App', () => {
+  beforeEach(() => {
+    cy.intercept('GET', 'http://localhost:3001/api/v1/orders', {fixture: 'burritoData'})
+    cy.visit('http://localhost:3000')
+  })
+  it('should have a header', () => {
+    cy.get('h1').contains('Burrito Builder')
+  })
+  it('should have a form', () => {
+    cy.get('input[name="name"]')
+    cy.get('.ingredient-button').should('have.length', 12)
+  })
+  it('should have order status', () => {
+    cy.get('.order-status').contains('Order: Nothing selected')
+  })
+  it('should have some orders already', () => {
+    cy.get('.order').should('have.length', 2)
+  })
+  it('should be able to add an order', () => {
+    cy.intercept('POST', 'http://localhost:3001/api/v1/orders', {fixture: 'postOrder'})
+    cy.intercept('GET', 'http://localhost:3001/api/v1/orders', {fixture: 'burritoData2'})
+    cy.get('input[name="name"]').type('ivy').should('have.value', 'ivy')
+    cy.get('button[name="steak"]').click()
+    cy.get('button[name="carnitas"]').click()
+    cy.get('.order-status').contains('Order: steak, carnitas')
+    cy.get('.order-button').click()
+    cy.get('.order').should('have.length', 3)
+  })
+  it('should be able to see an error if an order was not placed properly', () => {
+    cy.intercept('POST', 'http://localhost:3001/api/v1/orders', {statusCode: 404})
+    cy.get('input[name="name"]').type('ivy').should('have.value', 'ivy')
+    cy.get('.order-button').click()
+    cy.get('.error-message').contains("please enter your name or choose an ingredient")
+  })
+  it('should be able to delete an order', () => {
+    cy.intercept('POST', 'http://localhost:3001/api/v1/orders', {fixture: 'postOrder'})
+    cy.intercept('GET', 'http://localhost:3001/api/v1/orders', {fixture: 'burritoData2'})
+    cy.get('input[name="name"]').type('ivy').should('have.value', 'ivy')
+    cy.get('button[name="steak"]').click()
+    cy.get('button[name="carnitas"]').click()
+    cy.get('.order-status').contains('Order: steak, carnitas')
+    cy.get('.order-button').click()
+    cy.get('.order').should('have.length', 3)
+    cy.intercept('DELETE', 'http://localhost:3001/api/v1/orders/3', {fixture: 'burritoData'})
+    cy.intercept('GET', 'http://localhost:3001/api/v1/orders', {fixture: 'burritoData'})
+    cy.get('.delete-button').last().click()
+    cy.get('.order').should('have.length', 2)
+  })
+  it('should be able to see an error if a user tries to add more than two of the same ingredient', () => {
+    cy.get('button[name="steak"]').click()
+    cy.get('button[name="steak"]').click()
+    cy.get('button[name="steak"]').click()
+    cy.get('.dupe-error').contains("You already have this ingredient in your list, select something else!")
   })
 })
